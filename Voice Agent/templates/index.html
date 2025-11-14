@@ -1,0 +1,134 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <title>Glitz Salon — Voice Booking</title>
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <!-- Vapi SDK -->
+  <script src="https://cdn.vapi.ai/sdk/latest.js"></script>
+  <style>
+    body { font-family: system-ui, Arial; margin: 24px; }
+    .container { max-width: 820px; margin: 0 auto; }
+    button { padding: 10px 16px; font-size: 16px; }
+    .card { background:#f8f9fb; padding:16px; border-radius:8px; margin-top:16px; }
+    label { display:block; margin-top:8px; font-weight:600; }
+    input, textarea { width:100%; padding:8px; margin-top:6px; border-radius:6px; border:1px solid #ddd; }
+    .muted { color:#666; font-size:14px; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>Glitz Salon — Voice Booking</h1>
+    <p class="muted">Talk to the assistant to book an appointment, or type/confirm fields below then click "Confirm Booking".</p>
+
+    <div class="card">
+      <button id="openVapi">🎙️ Talk to Salon Assistant</button>
+      <p class="muted">Assistant transcript will populate the form below automatically.</p>
+    </div>
+
+    <div class="card">
+      <h3>Booking Details</h3>
+      <label for="name">Name</label>
+      <input id="name" placeholder="Customer name" />
+      <label for="date">Date (YYYY-MM-DD)</label>
+      <input id="date" placeholder="2025-10-20" />
+      <label for="time">Time (HH:MM)</label>
+      <input id="time" placeholder="14:30" />
+      <label for="transcript">Transcript / Notes</label>
+      <textarea id="transcript" rows="5" placeholder="Assistant transcript will appear here..."></textarea>
+      <div style="margin-top:12px;">
+        <button id="confirmBooking">✅ Confirm Booking</button>
+      </div>
+      <p id="status" class="muted" style="margin-top:12px"></p>
+    </div>
+  </div>
+
+  <script>
+    // ----------------------------
+    // CONFIG - replace with your keys from Vapi dashboard
+    const VAPI_PUBLIC_KEY = "7907df2a-c3ad-428a-9260-2a97e38fd487"; // pk_live_... or pk_test_...
+    const VAPI_ASSISTANT_ID = "2ca3ae67-ecbd-4df1-b9fb-3d4c5bd97f31";
+    // ----------------------------
+
+    let vapiClient;
+
+    // Initialize after window load
+    window.addEventListener("load", () => {
+      try {
+        vapiClient = new Vapi(VAPI_PUBLIC_KEY);
+        console.log("Vapi SDK initialized successfully");
+      } catch (err) {
+        console.warn("Vapi SDK init error:", err);
+      }
+    });
+
+    document.getElementById("openVapi").addEventListener("click", async () => {
+      if (!vapiClient) return alert("Vapi SDK not initialized. Check public key.");
+
+      try {
+        const callInstance = await vapiClient.startCall({ assistantId: VAPI_ASSISTANT_ID });
+
+        if (callInstance.onTranscript) {
+          callInstance.onTranscript((text) => {
+            document.getElementById("transcript").value = text;
+            autoExtractFields(text);
+          });
+        }
+
+        if (callInstance.onEnded) {
+          callInstance.onEnded((meta) => console.log("Call ended", meta));
+        }
+
+      } catch (err) {
+        console.error("startCall error:", err);
+        alert("Failed to start voice session. Check console.");
+      }
+    });
+
+    function autoExtractFields(text) {
+      if (!text) return;
+      const nameMatch = text.match(/(?:my name is|i am|i'm|this is)\s+([A-Za-z ]{2,40})/i);
+      if (nameMatch) document.getElementById("name").value = nameMatch[1].trim();
+
+      const dateMatch = text.match(/(\d{4}-\d{2}-\d{2})/);
+      if (dateMatch) document.getElementById("date").value = dateMatch[1].trim();
+
+      const timeMatch = text.match(/(\d{1,2}:\d{2})/);
+      if (timeMatch) document.getElementById("time").value = timeMatch[1].trim();
+    }
+
+    document.getElementById("confirmBooking").addEventListener("click", async () => {
+      const btn = document.getElementById("confirmBooking");
+      btn.disabled = true;
+      btn.textContent = "Sending...";
+
+      const payload = {
+        name: document.getElementById("name").value,
+        date: document.getElementById("date").value,
+        time: document.getElementById("time").value,
+        transcript: document.getElementById("transcript").value
+      };
+
+      const statusEl = document.getElementById("status");
+      statusEl.textContent = "Sending booking to server...";
+
+      try {
+        const res = await fetch("/api/bookings", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(payload)
+        });
+        const data = await res.json();
+        if (res.ok) statusEl.textContent = "Booking confirmed! SMS sent.";
+        else statusEl.textContent = "Server error: " + (data.error || JSON.stringify(data));
+      } catch (err) {
+        console.error(err);
+        statusEl.textContent = "Network error sending booking.";
+      } finally {
+        btn.disabled = false;
+        btn.textContent = "✅ Confirm Booking";
+      }
+    });
+  </script>
+</body>
+</html>

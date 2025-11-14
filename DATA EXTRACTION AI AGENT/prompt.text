@@ -1,0 +1,37 @@
+BLUEPRINT:
+
+G-mail(Watch Emails)---Array Aggregrator(To access multiple Attachements)---Google Drive(Upload a File)---Google Drive(Get a Shared Link)---0CodeKit(For the Extraction of Data)---Transform To Json---Google Gemini AI(for Convert the Data to Pure JSON)---Parse JSON---Google Sheet(Add a row).
+
+PROMPT:
+Please return ONLY the raw JSON. Do NOT use triple backticks (```), "json" tags, or explanations. Just the JSON output as plain text, no formatting.
+
+The format should be:
+
+[
+  {
+    "invoice": {
+      "invoice_number": "{{INVOICE_NUMBER}}",
+      "date": "{{INVOICE_DATE}}"
+    },
+    "bill_to": {
+      "name": "{{BILL_TO_NAME}}",
+      "address": "{{BILL_TO_ADDRESS}}",
+      "email": "{{BILL_TO_EMAIL}}",
+      "phone": "{{BILL_TO_PHONE}}"
+    },
+    "items": [
+      {
+        "description": "{{ITEM_DESCRIPTION}}",
+        "rate": "{{ITEM_RATE}}",
+        "quantity": "{{ITEM_QUANTITY}}",
+        "balance": "{{ITEM_BALANCE}}"
+      }
+    ],
+    "total_balance": "{{TOTAL_BALANCE}}"
+  }
+]
+
+✅ Key instruction: Do NOT use triple backticks (`), or format the output as a code block. Return the output ONLY as valid JSON without any explanation or markup.
+
+Text to extract from:
+{{20.json}}
